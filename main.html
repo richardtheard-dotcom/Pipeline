@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Article Collector & Summarizer with Backend</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+  }
+  input[type=text] {
+    width: 300px;
+    padding: 8px;
+  }
+  button {
+    padding: 8px 12px;
+    margin-left: 8px;
+  }
+  #fields {
+    margin-top: 10px;
+  }
+  #articlesTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  #articlesTable th, #articlesTable td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+  }
+  #articlesTable th {
+    background-color: #f4f4f4;
+  }
+</style>
+</head>
+<body>
+
+<h1>Article Collector & Summarizer (With Backend)</h1>
+
+<label for="subjectInput">Enter Subject:</label>
+<input type="text" id="subjectInput" placeholder="e.g., Artificial Intelligence"/>
+<button onclick="fetchArticles()">Fetch Articles</button>
+
+<div id="fields">
+  <strong>Select fields to display:</strong><br/>
+  <label><input type="checkbox" value="title" checked onchange="updateTable()"> Title</label>
+  <label><input type="checkbox" value="url" checked onchange="updateTable()"> URL</label>
+  <label><input type="checkbox" value="author" checked onchange="updateTable()"> Author</label>
+  <label><input type="checkbox" value="publish_date" checked onchange="updateTable()"> Date</label>
+  <label><input type="checkbox" value="summary" checked onchange="updateTable()"> Summary</label>
+</div>
+
+<table id="articlesTable">
+  <thead>
+    <tr id="tableHeader"></tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<script>
+  let articles = [];
+
+  async function fetchArticles() {
+    const subject = document.getElementById('subjectInput').value.trim();
+    if (!subject) {
+      alert('Please enter a subject.');
+      return;
+    }
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/articles?subject=${encodeURIComponent(subject)}`);
+      if (!response.ok) {
+        alert('Error fetching articles from backend.');
+        return;
+      }
+      articles = await response.json();
+
+      // Generate summaries locally (simulate)
+      for (const article of articles) {
+        article.summary = generateSummary(article.full_text);
+      }
+      updateTable();
+    } catch (error) {
+      alert('Failed to fetch articles. Is the backend running?');
+      console.error(error);
+    }
+  }
+
+  function generateSummary(fullText) {
+    const words = fullText.split(' ');
+    return words.slice(0, 20).join(' ') + (words.length > 20 ? '...' : '');
+  }
+
+  function updateTable() {
+    const selectedFields = Array.from(document.querySelectorAll('#fields input[type=checkbox]:checked'))
+                                .map(cb => cb.value);
+
+    // Header
+    const headerRow = document.getElementById('tableHeader');
+    headerRow.innerHTML = '';
+    for (const field of selectedFields) {
+      const th = document.createElement('th');
+      th.innerText = field.replace('_', ' ').toUpperCase();
+      headerRow.appendChild(th);
+    }
+
+    // Body
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
+
+    for (const article of articles) {
+      const row = document.createElement('tr');
+      for (const field of selectedFields) {
+        const td = document.createElement('td');
+        if (field === 'title') {
+          td.innerHTML = `<a href="${article.url}" target="_blank">${article.title}</a>`;
+        } else if (field === 'summary') {
+          td.innerText = article.summary;
+        } else {
+          td.innerText = article[field] || '';
+        }
+        row.appendChild(td);
+      }
+      tbody.appendChild(row);
+    }
+  }
+</script>
+
+</body>
+</html>
+
+
